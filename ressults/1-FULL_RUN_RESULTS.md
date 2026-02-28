@@ -1,0 +1,110 @@
+# Dokumentasi Hasil Full Run Fase 2
+
+Sumber hasil: `mscnn-nids/histories-read-only/notebook-full-evaluating-final-result.ipynb`  
+Tanggal run (dari notebook): `2026-02-28 09:53`
+
+## 1. Ringkasan Pipeline
+- Preprocessing, feature selection, scaling, latent extraction, windowing: selesai.
+- Training Stage 1/2 pada run ini menggunakan checkpoint (cached weights).
+- Evaluasi dilakukan pada:
+  - CIC-IDS-2017 (all labels)
+  - CSE-CIC-IDS-2018 (all labels)
+
+## 2. Arsitektur Model
+- Stage 1: MSCNN-AE (kernel 3/5/7) -> bottleneck 8 dim
+- Stage 2: BiLSTM-AE -> bottleneck 4 dim
+- Compression ratio:
+  - Stage 1: `50 / 8 = 6.2x`
+  - Stage 2: `(10 x 8) / 4 = 20.0x`
+- Parameter:
+  - Stage 1: `33,193`
+  - Stage 2: `40,844`
+
+## 3. Data dan Feature
+- CIC-2017 all labels: `2,830,743` rows
+  - Benign: `2,273,097`
+  - Attack: `557,646`
+- Feature final setelah seleksi: `50` fitur (dari awal 77)
+- Domain shift summary (CIC benign vs CSE benign):
+  - Low shift: `6`
+  - Medium shift: `14`
+  - High shift: `30`
+
+## 4. Thresholding
+- Kandidat threshold dievaluasi dari beberapa metode (Z-score, Gaussian, IQR, MAD, Percentile).
+- Threshold terpilih: **`zscore_k2.0 = 0.200325`**
+- FPR validasi benign untuk threshold terpilih: **`0.0422`**
+
+## 5. Hasil Evaluasi Utama
+
+| Metric | CIC-2017 | CSE-2018 | Gap (CSE - CIC) |
+|---|---:|---:|---:|
+| ROC-AUC | 0.6644 | 0.2658 | -0.3987 |
+| PR-AUC | 0.5016 | 0.2241 | -0.2775 |
+| F1-Score | 0.3836 | 0.1598 | -0.2238 |
+| Recall | 0.2697 | 0.1850 | -0.0847 |
+| Precision | 0.6640 | 0.1407 | -0.5233 |
+| FPR | 0.0335 | 0.5543 | +0.5208 |
+
+Interpretasi singkat:
+- Di CIC-2017, false positive relatif rendah (`FPR 3.35%`) tapi recall masih rendah.
+- Di CSE-2018, performa turun tajam dan FPR sangat tinggi (`55.43%`), menandakan generalization gagal.
+
+## 6. Per-Attack Detection Highlights
+
+### CIC-2017
+- Tinggi: `DDoS (DR 0.8313)`
+- Sangat rendah: `PortScan (0.0006)`, `DoS Hulk (0.1590)`, `FTP-Patator (0.1337)`, `Bot (0.0127)`, beberapa web attacks mendekati `0`.
+
+### CSE-2018
+- Tinggi: `DoS attacks-GoldenEye (0.9480)`, `DoS attacks-Slowloris (0.8016)`
+- Rendah/bermasalah: `DoS attacks-Hulk (0.1196)`, `FTP-BruteForce (0.0462)`, `DoS attacks-SlowHTTPTest (0.0000)`
+- Terdapat label anomali: `Label (n=1)` pada output.
+
+## 7. Catatan Kritis Kualitas Evaluasi
+- Pada evaluasi CSE terdapat banyak warning fitur tidak ditemukan dan diisi `0.0`.
+- Ini mengindikasikan mismatch skema nama kolom antar dataset, dan sangat mungkin berkontribusi besar terhadap drop performa CSE.
+
+## 8. Verdict
+**CIC-SPECIFIC / overfit terhadap distribusi CIC-2017.**  
+Model belum memenuhi target generalisasi ke CSE-2018.
+
+## 9. Rekomendasi Prioritas
+1. Perbaiki normalisasi/mapping nama fitur CIC <-> CSE secara konsisten sebelum re-evaluasi.
+2. Bersihkan data evaluasi CSE dari baris invalid/header leakage (indikasi label `Label`).
+3. Re-run evaluasi setelah preprocessing lintas-domain konsisten (tanpa retrain dulu).
+4. Setelah itu baru lanjut tuning threshold/weight Stage1-Stage2 atau teknik domain adaptation.
+
+## 10. Stabilization Pass (Tanpa Retrain)
+
+Perubahan pipeline evaluasi yang sudah ditambahkan:
+- Utilitas mapping kolom bersama:
+  - `normalize_colname`
+  - `build_column_lookup`
+  - `resolve_feature_column`
+  - `summarize_feature_mapping`
+- Konfigurasi validasi schema:
+  - `STRICT_FEATURE_MATCH = True`
+  - `MIN_FEATURE_MATCH_RATIO = 0.95`
+  - `DROP_HEADER_LEAK_ROWS = True`
+  - `FEATURE_ALIAS_MAP = {...}` (siap diisi alias fitur CIC<->CSE)
+- Sanitasi header leakage saat load CSE per-chunk.
+- Metadata coverage mapping per file CSE.
+- Pre-scoring validation gate sebelum Section 13.2.
+
+Checklist verifikasi setelah re-run 13.1 -> 13.2:
+- [ ] Tidak ada label literal `Label` di distribusi kelas CSE.
+- [ ] `max_missing_features == 0` (atau sesuai threshold yang diset).
+- [ ] `min_match_ratio >= 95%`.
+- [ ] 13.2 berjalan tanpa warning mismatch schema masif.
+
+### Before vs After (diisi setelah re-run stabilisasi)
+
+| Metric | Before (full run awal) | After stabilization |
+|---|---:|---:|
+| CSE ROC-AUC | 0.2658 | TBD |
+| CSE PR-AUC | 0.2241 | TBD |
+| CSE F1 | 0.1598 | TBD |
+| CSE FPR | 0.5543 | TBD |
+| CSE min feature match ratio | N/A (banyak missing warning) | TBD |
+| CSE label leakage (`Label` class) | Present (`n=1`) | TBD |
