@@ -191,3 +191,42 @@ Artifact baru yang dihasilkan:
 - [ ] split mode bukan row fallback
 - [ ] latent health pass (tanpa `NaN/Inf`, `latent_std_max <= 100`)
 - [ ] CSE mapping coverage tetap 100% dan tanpa header leakage `Label`
+
+## 13. Part 4 Implemented: `v4_scoringfix` (Score Direction + Scoring Redesign)
+
+Tujuan Part 4:
+- Tanpa retrain model.
+- Reuse cache/checkpoint `v3_sessionfix` sebagai input.
+- Redesign anomaly score agar direction issue teratasi dan evaluasi stabil.
+
+Perubahan utama yang sudah diimplementasikan di notebook:
+- Input/output namespace dipisah:
+  - input: `SOURCE_PIPELINE_VERSION = "v3_sessionfix"`
+  - output: `SCORE_PIPELINE_VERSION = "v4_scoringfix"`
+- Section baru `10.5`:
+  - `fit_stage_score_stats`
+  - `normalize_stage_errors`
+  - `combine_anomaly_score`
+  - `direction_diagnostic`
+  - `run_weight_grid_search`
+- Scoring v4:
+  - per-stage z-normalization dari benign validation
+  - Stage 2 contribution di-invert saat `INVERT_STAGE2_SCORE=True`
+  - mode: `combined_normalized | stage1_only | stage2_only`
+- Weight tuning:
+  - grid search `w1 in [0.3, 0.5, 0.7, 0.9, 1.0]`
+  - tuning pada CIC calibration split 10% (stratified)
+  - evaluasi final CIC di holdout 90%
+- Threshold dihitung ulang dari `combined_val` v4.
+- Diagnostic direction wajib dicetak di CIC dan CSE (`auc_raw` vs `auc_inverted`).
+
+Artifact baru Part 4:
+- `artifacts/v4_scoringfix/score_calibrator.json`
+- `artifacts/v4_scoringfix/weight_grid_search_results.csv`
+- `artifacts/v4_scoringfix/threshold_results_v4.json`
+- `artifacts/v4_scoringfix/best_threshold_v4.json`
+- `artifacts/v4_scoringfix/cic_calibration_metrics.json`
+- `artifacts/v4_scoringfix/cic_holdout_metrics.json`
+- `artifacts/v4_scoringfix/cse_metrics.json`
+- `artifacts/v4_scoringfix/score_direction_report_v4.json`
+- `results/v4_scoringfix/part4_summary.md`
