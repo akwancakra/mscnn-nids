@@ -268,3 +268,102 @@ Artifact Part 5:
 - `artifacts/v5_domainfix/part5_best_config.json`
 - `artifacts/v5_domainfix/part5_gate_report.json`
 - `results/v5_domainfix/part5_summary.md`
+
+## 15. Capaian Aktual Full Run Part 5 (Validated)
+
+Sumber validasi:
+- `mscnn-nids/histories-read-only/notebook-huge-fix-part-5.ipynb`
+- Output `[Part5] Completed` pada section eksekusi Part 5
+
+Best configuration yang terpilih:
+- `clip_high_shift + cse_benign_threshold`
+- `CSE AUC raw/inverted: 0.6223 / 0.3777`
+- `CSE FPR: 0.0003`
+- `DoS Hulk DR: 0.0062`
+- `Outcome: advance_to_part6_or_phase3`
+
+### 15.1 Delta Utama vs Baseline Lama (Part 4-style baseline cell)
+
+| Metric | Baseline Lama | Part 5 Best | Delta |
+|---|---:|---:|---:|
+| CSE ROC-AUC (raw) | 0.2770 | 0.6223 | +0.3453 |
+| CSE FPR | 0.6586 | 0.0003 | -0.6583 |
+| CIC ROC-AUC (raw) | 0.8633 | 0.8633 | +0.0000 |
+| Direction issue (CSE) | True | False | Improved |
+
+Interpretasi:
+- Perbaikan CSE signifikan, membuktikan masalah utama ada pada domain calibration/scoring transfer.
+- Guard CIC tetap terjaga (tidak ada penurunan ROC-AUC pada hasil best).
+- Trade-off belum selesai untuk DoS Hulk (DR masih sangat rendah).
+
+### 15.2 Status Gate Part 5 (berdasarkan best config)
+
+- `G1 (CSE AUC inverted >= 0.72)`: `False`
+- `G2 (CSE AUC raw > 0.60)`: `True`
+- `G3 (CSE FPR < 0.20)`: `True`
+- `G4 (DoS Hulk DR > 0.15)`: `False`
+- `G5 (CIC AUC >= 0.8333)`: `True`
+
+Keputusan eksekusi:
+- Outcome final tetap `advance_to_part6_or_phase3` karena policy Part 5 memprioritaskan kelulusan `G2`.
+
+### 15.3 Catatan Inkonsistensi Notebook (Wajib Diketahui)
+
+Pada notebook run yang sama ada inkonsistensi antar-section:
+- Section Part 5 (`[Part5] Completed`) sudah menunjukkan metrik best terbaru.
+- Beberapa cell analisis generalization lama (setelahnya) masih mencetak metrik baseline lama (`CSE ROC-AUC 0.2770`, `FPR 0.6586`, verdict `CIC-SPECIFIC`).
+
+Artinya:
+- Untuk keputusan Part 5, gunakan artifact/output Part 5 (`part5_eval_matrix.csv`, `part5_best_config.json`, `part5_gate_report.json`) sebagai source of truth.
+- Cell analisis generalization lama perlu direfresh agar membaca hasil best Part 5, bukan variabel baseline sebelumnya.
+
+## 16. Part 6 Implemented: `v6_report_threshold` (Report Sync + Threshold Trade-off)
+
+Tujuan implementasi Part 6:
+- Sinkronkan section generalization/report agar tidak lagi membaca baseline lama.
+- Optimasi operating threshold CSE dengan objective:
+  - hard constraint `FPR <= 0.05`
+  - maximize `Recall`
+  - tie-break `F1`
+- Tetap tanpa retrain model.
+
+Perubahan utama di notebook:
+- Config baru Part 6:
+  - `PART6_VERSION = "v6_report_threshold"`
+  - `PART6_ARTIFACTS_DIR`, `PART6_RESULTS_DIR`
+  - `RUN_PART6_REPORT_THRESHOLD = True`
+  - `PART6_FPR_CAP = 0.05`
+  - `PART6_MIN_RECALL_FLOOR = 0.40`
+  - `PART6_CALIB_RATIO = 0.20`
+  - `PART6_CALIB_SPLIT_MODE = "stratified_multiclass_label"`
+  - `PART6_THRESHOLD_GRID_POINTS = 300`
+  - `PART6_STRICT_SYNC = True`
+- Section baru `14.4-14.7`:
+  - bootstrap + validasi source artifacts Part 5
+  - recompute score CIC/CSE dengan strategy terbaik Part 5
+  - stratified split CSE by multi-class label (dengan fallback rare-class terkontrol)
+  - threshold sweep + selection policy + conservative alert
+  - holdout evaluation + CIC compatibility check + gate report
+- Refactor section `14.1-14.3` dan `15`:
+  - sekarang wajib baca output Part 6 (strict sync)
+  - tidak lagi menggunakan variabel baseline legacy untuk verdict final.
+
+Artifact Part 6 yang dihasilkan:
+- `artifacts/v6_report_threshold/part6_run_manifest.json`
+- `artifacts/v6_report_threshold/score_distribution_part6.json`
+- `artifacts/v6_report_threshold/part6_split_label_distribution.csv`
+- `artifacts/v6_report_threshold/part6_threshold_sweep_calib.csv`
+- `artifacts/v6_report_threshold/part6_best_threshold.json`
+- `artifacts/v6_report_threshold/part6_cse_holdout_metrics.json`
+- `artifacts/v6_report_threshold/part6_cic_compat_metrics.json`
+- `artifacts/v6_report_threshold/part6_hulk_metrics.json`
+- `artifacts/v6_report_threshold/part6_gate_report.json`
+- `artifacts/v6_report_threshold/generalization_verdict_part6.json`
+- `results/v6_report_threshold/part6_pr_curve_points.csv`
+- `results/v6_report_threshold/part6_roc_curve_points.csv`
+- `results/v6_report_threshold/generalization_comparison_part6.csv`
+- `results/v6_report_threshold/final_report_part6.md`
+
+Catatan:
+- Hasil numerik final Part 6 akan terisi setelah notebook dijalankan sampai section Part 6 selesai.
+- Source of truth untuk verdict final harus mengikuti artifact `v6_report_threshold`.
