@@ -230,3 +230,41 @@ Artifact baru Part 4:
 - `artifacts/v4_scoringfix/cse_metrics.json`
 - `artifacts/v4_scoringfix/score_direction_report_v4.json`
 - `results/v4_scoringfix/part4_summary.md`
+
+## 14. Part 5 Implemented: `v5_domainfix` (Domain Shift + Target Threshold Calibration)
+
+Tujuan implementasi Part 5:
+- Tidak retrain model.
+- Reuse cache/model `v3_sessionfix` + scorer baseline `v4_scoringfix`.
+- Mitigasi domain shift + threshold calibration target domain.
+
+Perubahan utama:
+- Config pipeline baru:
+  - `PIPELINE_VERSION = "v5_domainfix"`
+  - `SOURCE_PREPROCESS_VERSION = "v3_sessionfix"`
+  - `SOURCE_SCORING_VERSION = "v4_scoringfix"`
+- Strategy domain shift (non-retrain):
+  - `mask_high_shift` dengan anchor **CIC benign median** (locked).
+  - `clip_high_shift` dengan bounds **CIC p1-p99**.
+- Score sign untuk CSE dikunci dari report direction v4 (`auto_from_part4`), tidak jadi variable search.
+- Matrix evaluasi locked 4 kombinasi:
+  - `mask_high_shift + cic_benign_threshold`
+  - `mask_high_shift + cse_benign_threshold`
+  - `clip_high_shift + cic_benign_threshold`
+  - `clip_high_shift + cse_benign_threshold`
+
+Artifact Part 5:
+- `artifacts/v5_domainfix/v5_run_manifest.json`
+- `artifacts/v5_domainfix/dos_hulk_deep_dive.json`
+- `artifacts/v5_domainfix/dos_hulk_residual_features.csv`
+- `results/v5_domainfix/dos_hulk_error_distributions.png`
+- `artifacts/v5_domainfix/high_shift_feature_profile.json`
+- `artifacts/v5_domainfix/strategy_inputs_preview.csv`
+- `artifacts/v5_domainfix/score_profile_v5.json`
+- `artifacts/v5_domainfix/thresholds_cic_benign_v5.json`
+- `artifacts/v5_domainfix/thresholds_cse_benign_v5.json`
+- `artifacts/v5_domainfix/threshold_transfer_drift_report.json`
+- `artifacts/v5_domainfix/part5_eval_matrix.csv`
+- `artifacts/v5_domainfix/part5_best_config.json`
+- `artifacts/v5_domainfix/part5_gate_report.json`
+- `results/v5_domainfix/part5_summary.md`
