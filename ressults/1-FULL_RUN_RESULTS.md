@@ -148,3 +148,46 @@ Cara menjalankan Phase 3:
 2. Set `RERUN_PHASE3_EXPERIMENTS = True`.
 3. Jalankan section 16.1.
 4. Cek artifact `phase3_ablation_summary.csv` untuk pemilihan konfigurasi terbaik.
+
+## 12. Implementasi Final v3_sessionfix+ (Sudah Dipasang di Notebook Utama)
+
+File notebook yang diubah:
+- `mscnn-nids/mscnn_bilstm_ae_nids.ipynb`
+
+Perubahan inti yang sudah aktif:
+- Versioning pipeline baru:
+  - `PIPELINE_VERSION = "v3_sessionfix"`
+  - `PREPROCESSED_DIR = .../preprocessed/v3_sessionfix`
+  - `ARTIFACTS_DIR = .../artifacts/v3_sessionfix`
+- Sessionization ketat:
+  - `SESSION_KEY_MODE = "5tuple"`
+  - `STRICT_SESSION_QUALITY = True`
+  - `MIN_UNIQUE_SESSIONS = 10000`
+  - `MIN_TIMESTAMP_VALID_RATIO = 0.90`
+  - `MAX_SINGLE_SESSION_SHARE = 0.05`
+  - `ALLOW_ROW_SPLIT_FALLBACK = False`
+- Verifikasi timestamp robust:
+  - resolver kolom canonical dengan normalisasi `strip().lower()`
+  - deteksi aman untuk kolom seperti `" Timestamp"`
+  - fallback deterministik `source_file + row_idx` bila timestamp invalid
+- Latent health gate sebelum windowing:
+  - hard fail jika ada `NaN/Inf`
+  - hard fail jika `latent_std_max > LATENT_STD_MAX` (default `100.0`)
+- Evaluasi CSE dengan score-direction diagnostic:
+  - jika `ROC-AUC < 0.5`, hitung juga AUC untuk `1 - score`
+  - simpan diagnosis, default tidak auto-invert (`AUTO_APPLY_SCORE_INVERSION=False`)
+
+Artifact baru yang dihasilkan:
+- `artifacts/v3_sessionfix/session_quality_report.json`
+- `artifacts/v3_sessionfix/session_split_report.json`
+- `artifacts/v3_sessionfix/latent_health_report.json`
+- `artifacts/v3_sessionfix/windowing_quality_report.json`
+- `artifacts/v3_sessionfix/score_direction_report.json`
+
+### Gate Readiness (wajib lulus sebelum lanjut Phase 3 tuning)
+- [ ] `unique_sessions >= 10000`
+- [ ] `timestamp_valid_ratio >= 0.90`
+- [ ] `largest_session_share <= 0.05`
+- [ ] split mode bukan row fallback
+- [ ] latent health pass (tanpa `NaN/Inf`, `latent_std_max <= 100`)
+- [ ] CSE mapping coverage tetap 100% dan tanpa header leakage `Label`
