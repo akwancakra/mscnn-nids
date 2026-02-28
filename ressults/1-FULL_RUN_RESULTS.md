@@ -108,3 +108,43 @@ Checklist verifikasi setelah re-run 13.1 -> 13.2:
 | CSE FPR | 0.5543 | TBD |
 | CSE min feature match ratio | N/A (banyak missing warning) | TBD |
 | CSE label leakage (`Label` class) | Present (`n=1`) | TBD |
+
+## 11. Phase 3 Implementation (Generalization Boost, Budget Tinggi)
+
+Perubahan sudah diimplementasikan pada notebook utama:
+- File: `mscnn-nids/mscnn_bilstm_ae_nids.ipynb`
+- Section baru: `16. PHASE 3 - GENERALIZATION EXPERIMENTS (A/B/C/D)`
+- Default aman: `RERUN_PHASE3_EXPERIMENTS = False` (tidak auto-train sampai flag diaktifkan)
+
+Config baru yang ditambahkan:
+- `ENABLE_DOMAIN_ADAPTATION = True`
+- `CSE_BENIGN_ADAPT_MAX_ROWS = 300000`
+- `ADAPT_MIX_RATIO_CIC = 0.7`
+- `ADAPT_MIX_RATIO_CSE = 0.3`
+- `S1_FINETUNE_EPOCHS = 20`
+- `S2_FINETUNE_EPOCHS = 20`
+- `FINETUNE_LR_SCALE = 0.1`
+- `RECALIBRATE_THRESHOLD_ON_MIXED_VAL = True`
+- `EXPERIMENT_TAG = "phase3_gen_v1"`
+
+Artifact output yang disiapkan:
+- `results/phase3_ablation_summary.csv`
+- `artifacts/phase3_best_config.json`
+- `results/phase3_report.md`
+
+Track eksperimen yang tersedia:
+- `A_baseline_clean`: retrain bersih CIC benign.
+- `B_cse_finetune`: fine-tune dari Track A memakai CSE benign.
+- `C_mixed_train`: train campuran CIC/CSE benign.
+- `D_score_calibrated`: grid kalibrasi bobot score `(0.7/0.3, 0.5/0.5, 0.3/0.7)` di model base terbaik.
+
+Hardening yang ikut ditambahkan:
+- Guard ketika data benign CSE tidak cukup untuk split adaptasi.
+- Guard ketika bundle model base untuk Track D tidak tersedia.
+- Perbaikan recalibration Track B agar menggunakan `val_session_ids` (bukan train ids) pada mixed validation.
+
+Cara menjalankan Phase 3:
+1. Jalankan notebook berurutan sampai selesai section evaluasi CIC+CSE.
+2. Set `RERUN_PHASE3_EXPERIMENTS = True`.
+3. Jalankan section 16.1.
+4. Cek artifact `phase3_ablation_summary.csv` untuk pemilihan konfigurasi terbaik.
