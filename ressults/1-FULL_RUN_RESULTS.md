@@ -500,3 +500,25 @@ Artifact output baru:
 - `results/v8_phase3_if/phase3_ablation_summary.csv`
 - `results/v8_phase3_if/phase3_progress_table.csv`
 - `results/v8_phase3_if/phase3_report.md`
+
+
+## 20. Part 8.1 Recovery (v8_phase3_if)
+
+Perbaikan Part 8.1 diterapkan untuk menstabilkan score direction dan threshold compatibility lintas CIC/CSE tanpa retrain model inti:
+- Unified effective score (`score_eff`) dengan comparator tunggal `>=`.
+- Direction policy per-domain berbasis AUC raw vs inverted (`phase3_direction_policy.json`).
+- Joint threshold selection wajib memenuhi dua constraint sekaligus:
+  - CSE `FPR <= 0.05`
+  - CIC `FPR <= 0.10`
+- Jika ensemble menurunkan CSE AUC dibanding AE-only (melewati tolerance), stream final otomatis fallback ke `AE_only`.
+- Jika joint candidate infeasible, status dipaksa `needs_debug` dengan diagnostik lengkap (tidak mengklaim sukses).
+
+Artifact tambahan/utama:
+- `artifacts/v8_phase3_if/phase3_recovery_manifest.json`
+- `artifacts/v8_phase3_if/phase3_direction_policy.json`
+- `artifacts/v8_phase3_if/phase3_stream_selection.json`
+- `artifacts/v8_phase3_if/phase3_joint_feasibility_report.json`
+- `artifacts/v8_phase3_if/phase3_no_joint_diagnostics.json` (jika infeasible)
+- `artifacts/v8_phase3_if/phase3_no_joint_pareto.csv` (jika infeasible)
+- `artifacts/v8_phase3_if/phase3_gate_report.json`
+- `results/v8_phase3_if/phase3_report.md`
