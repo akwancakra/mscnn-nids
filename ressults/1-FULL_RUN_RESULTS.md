@@ -455,3 +455,48 @@ Artifact tambahan Part 7.1:
 Catatan:
 - Jika failure mode `no_joint_candidate_under_constraints` muncul, ini indikasi constraint set tidak feasible pada distribusi score saat ini.
 - Tindak lanjut direkomendasikan ke Phase 3 ensemble/domain adaptation, bukan melonggarkan guard secara silent.
+
+## 19. Part 8 Implemented: Isolation Forest Ensemble `v8_phase3_if`
+
+Implementasi Phase 3 sudah ditambahkan ke notebook utama dengan fokus:
+- Stage-3 `IsolationForest` di atas feature 10-dim per flow:
+  - `latent_stage1[8] + s1_recon_error[1] + s2_recon_error_mapped[1]`
+- Tanpa retrain Stage 1/2 (kontrak model tetap).
+- Kontrak scoring Part 5 tetap immutable (`w1=0.90`, `w2=0.10`, `invert_stage2=True`, `clip_high_shift`).
+
+Perubahan penting yang sudah diimplementasikan:
+- Config baru `v8_phase3_if` di Section 0.
+- **Mandatory IF feature cache**:
+  - `if_features_train.npy`, `if_features_val.npy`, `if_features_cic.npy`, `if_features_cse.npy`
+  - plus cache manifest untuk audit shape/source.
+- IF training + IF calibrator dari CIC benign val.
+- Ensemble scoring (`0.6 * AE_norm + 0.4 * IF_norm`).
+- Threshold optimization anti-bug:
+  - grid dari CIC benign val score quantile `Q(0.50..0.999)`, 300 titik
+  - safety guard CIC hard stop (`FPR > 0.10` stop).
+- Evaluasi final CIC + CSE + per-attack DR + Hulk DR.
+- **Ablation fairness locked**:
+  - AE-only, IF-only, Ensemble memakai threshold final ensemble yang sama.
+  - ROC-AUC/PR-AUC tetap dihitung threshold-free per stream.
+
+Artifact output baru:
+- `artifacts/v8_phase3_if/phase3_run_manifest.json`
+- `artifacts/v8_phase3_if/phase3_contract_snapshot.json`
+- `artifacts/v8_phase3_if/if_features_*.npy`
+- `artifacts/v8_phase3_if/if_features_cache_manifest.json`
+- `artifacts/v8_phase3_if/if_features_schema.json`
+- `artifacts/v8_phase3_if/if_model.pkl`
+- `artifacts/v8_phase3_if/if_score_calibrator.json`
+- `artifacts/v8_phase3_if/if_training_health.json`
+- `artifacts/v8_phase3_if/phase3_direction_check.json`
+- `artifacts/v8_phase3_if/phase3_split_label_distribution.csv`
+- `artifacts/v8_phase3_if/phase3_threshold_sweep_calib.csv`
+- `artifacts/v8_phase3_if/phase3_best_threshold.json`
+- `artifacts/v8_phase3_if/phase3_cic_metrics.json`
+- `artifacts/v8_phase3_if/phase3_cse_holdout_metrics.json`
+- `artifacts/v8_phase3_if/phase3_per_attack_dr_cse.csv`
+- `artifacts/v8_phase3_if/phase3_hulk_metrics.json`
+- `artifacts/v8_phase3_if/phase3_gate_report.json`
+- `results/v8_phase3_if/phase3_ablation_summary.csv`
+- `results/v8_phase3_if/phase3_progress_table.csv`
+- `results/v8_phase3_if/phase3_report.md`
