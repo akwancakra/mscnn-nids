@@ -367,3 +367,56 @@ Artifact Part 6 yang dihasilkan:
 Catatan:
 - Hasil numerik final Part 6 akan terisi setelah notebook dijalankan sampai section Part 6 selesai.
 - Source of truth untuk verdict final harus mengikuti artifact `v6_report_threshold`.
+
+## 17. Part 7 Implemented: `v7_threshold_fix` (Threshold & Score Direction Fix)
+
+Tujuan implementasi Part 7:
+- Memperbaiki bug threshold invalid (Part 6) dengan sweep yang benar berbasis benign calibration score.
+- Menjamin konsistensi score direction antar jalur evaluasi.
+- Menjaga scoring contract Part 5 tetap immutable (tanpa retrain).
+
+Perubahan utama:
+- Config baru Part 7:
+  - `PART7_VERSION = "v7_threshold_fix"`
+  - `RUN_PART7_THRESHOLD_FIX = True`
+  - `PART7_FPR_CAP = 0.05`
+  - `PART7_MIN_RECALL_FLOOR = 0.40`
+  - `PART7_THRESHOLD_GRID_POINTS = 300`
+  - `PART7_GRID_Q_LOW = 0.50`
+  - `PART7_GRID_Q_HIGH = 0.999`
+  - `PART7_CIC_FPR_HARD_STOP = 0.10`
+  - `PART7_STRICT_SYNC = True`
+- Section baru `14.8-14.13`:
+  - bootstrap + scoring contract lock (`clip_high_shift`, `w1/w2`, `invert_stage2`, `cse_score_sign`)
+  - unified score pipeline (`compute_scores_v7`)
+  - direction verification pre-sweep (`mean attack > mean benign`)
+  - stratified split CSE by multi-class label (+ rare fallback)
+  - threshold sweep dari quantile benign calib (`0.50..0.999`)
+  - guard tambahan `fpr_at_highest_threshold < 1.0`
+  - safety guard pasca-select: stop jika `CIC FPR > 0.10`
+- Refactor section `14.1-14.3` dan `15`:
+  - strict sync ke artifact Part 7
+  - report final + verdict tidak lagi memakai variabel legacy Part 4/5/6.
+
+Artifact Part 7:
+- `artifacts/v7_threshold_fix/part7_run_manifest.json`
+- `artifacts/v7_threshold_fix/part7_scoring_contract.json`
+- `artifacts/v7_threshold_fix/part7_score_distribution.json`
+- `artifacts/v7_threshold_fix/part7_direction_check.json`
+- `artifacts/v7_threshold_fix/part7_direction_check_samples.csv`
+- `artifacts/v7_threshold_fix/part7_split_label_distribution.csv`
+- `artifacts/v7_threshold_fix/part7_split_meta.json`
+- `artifacts/v7_threshold_fix/part7_threshold_sweep_calib.csv`
+- `artifacts/v7_threshold_fix/part7_best_threshold.json`
+- `artifacts/v7_threshold_fix/part7_threshold_selection_debug.json`
+- `artifacts/v7_threshold_fix/part7_cse_holdout_metrics.json`
+- `artifacts/v7_threshold_fix/part7_cic_compat_metrics.json`
+- `artifacts/v7_threshold_fix/part7_per_attack_dr_cse.csv`
+- `artifacts/v7_threshold_fix/part7_hulk_metrics.json`
+- `artifacts/v7_threshold_fix/part7_gate_report.json`
+- `artifacts/v7_threshold_fix/generalization_verdict_part7.json`
+- `results/v7_threshold_fix/part7_pr_curve_points.csv`
+- `results/v7_threshold_fix/part7_roc_curve_points.csv`
+- `results/v7_threshold_fix/generalization_comparison_part7.csv`
+- `results/v7_threshold_fix/part7_progress_table.csv`
+- `results/v7_threshold_fix/final_report_part7.md`
