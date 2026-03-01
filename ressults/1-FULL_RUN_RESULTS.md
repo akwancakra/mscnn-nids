@@ -420,3 +420,38 @@ Artifact Part 7:
 - `results/v7_threshold_fix/generalization_comparison_part7.csv`
 - `results/v7_threshold_fix/part7_progress_table.csv`
 - `results/v7_threshold_fix/final_report_part7.md`
+
+## 18. Part 7.1 Recovery Implemented: `No Joint Candidate` Fail-Fast Diagnostics
+
+Tujuan recovery:
+- Menangani kasus infeasible threshold constraints secara eksplisit:
+  - `CSE FPR <= 0.05`
+  - `CIC FPR <= 0.10`
+- Tetap fail-fast, namun dengan artifact diagnostik lengkap agar analisis tidak blind.
+
+Perubahan utama:
+- Jika `candidates_joint == 0`, pipeline sekarang:
+  - membangun diagnostik no-joint (`best_cse_candidate`, `best_cic_candidate`, `best_balanced_candidate`)
+  - menyimpan pareto table top-N
+  - menulis debug metadata lengkap
+  - menghasilkan failure report markdown
+  - stop dengan error message instruktif.
+- Branch hard-stop CIC juga diperluas dengan debug field:
+  - `selected_threshold`
+  - `selected_cse_fpr`
+  - `selected_cic_fpr`
+  - `fallback_reason`
+  - `fpr_at_highest_threshold`
+  - `contract_snapshot`.
+- Section downstream (`14.1`, `14.3`, `15`) dibuat graceful saat fail-fast:
+  - tidak crash berantai
+  - tetap generate ringkasan failure state.
+
+Artifact tambahan Part 7.1:
+- `artifacts/v7_threshold_fix/part7_no_joint_diagnostics.json`
+- `artifacts/v7_threshold_fix/part7_no_joint_pareto.csv`
+- `results/v7_threshold_fix/failure_report_part7.md`
+
+Catatan:
+- Jika failure mode `no_joint_candidate_under_constraints` muncul, ini indikasi constraint set tidak feasible pada distribusi score saat ini.
+- Tindak lanjut direkomendasikan ke Phase 3 ensemble/domain adaptation, bukan melonggarkan guard secara silent.
